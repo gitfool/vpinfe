@@ -35,26 +35,37 @@ EDITOR_FALLBACK_COMMENTS = {
 }
 
 KEEP_ALL_SECTIONS = {
+    "Editor",
     "Player",
     "Backglass",
     "ScoreView",
     "Topper",
+    "PlayerVR",
+    "DefaultCamera",
+    "TableOverride",
     "Input",
     "DMD",
     "Alpha",
     "Controller",
+    "Standalone",
+    "TableOption",
 }
 
 SECTION_DESCRIPTIONS = {
-    "Editor": "Selective editor debugging and logging settings from VPinballX.ini.",
+    "Editor": "Editor debugging, layout, and appearance settings from VPinballX.ini.",
     "Player": "Runtime audio, display, physics, and table player settings.",
     "Backglass": "Backglass output and positioning settings.",
     "ScoreView": "ScoreView window and rendering settings.",
     "Topper": "Topper output and placement settings.",
+    "PlayerVR": "VR preview, table placement, and headset rendering settings.",
+    "DefaultCamera": "Default desktop and full single-screen camera settings.",
+    "TableOverride": "Global table view, difficulty, exposure, and tone mapping overrides.",
     "Input": "Input, controller, keyboard, and nudge settings.",
     "DMD": "DMD rendering and layout settings.",
     "Alpha": "Alpha-numeric display rendering settings.",
     "Controller": "Controller integrations and external system settings.",
+    "Standalone": "Standalone VPX runtime behavior and Linux cabinet integration settings.",
+    "TableOption": "Table script options saved by VPX tables.",
 }
 
 SECTION_ICONS = {
@@ -63,10 +74,15 @@ SECTION_ICONS = {
     "Backglass": "tv",
     "ScoreView": "scoreboard",
     "Topper": "view_day",
+    "PlayerVR": "view_in_ar",
+    "DefaultCamera": "photo_camera",
+    "TableOverride": "tune",
     "Input": "keyboard",
     "DMD": "developer_board",
     "Alpha": "text_fields",
     "Controller": "gamepad",
+    "Standalone": "terminal",
+    "TableOption": "rule",
 }
 
 
@@ -198,11 +214,10 @@ def _build_display_sections(parsed: ParsedIni) -> list[dict]:
         section_meta = parsed.sections[section_name]
 
         if section_name == "Editor":
-            fields: list[FieldMeta] = []
+            fields: list[FieldMeta] = list(section_meta.fields.values())
             for key in EDITOR_INCLUDED_KEYS:
                 existing = section_meta.fields.get(key.lower())
                 if existing is not None:
-                    fields.append(existing)
                     continue
 
                 fallback = EDITOR_FALLBACK_COMMENTS.get(key, key)
