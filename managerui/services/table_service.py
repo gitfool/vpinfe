@@ -20,8 +20,11 @@ from managerui.services import table_index_service
 logger = logging.getLogger("vpinfe.manager.table_service")
 
 VPSDB_JSON_PATH = VPINFE_INI_PATH.parent / "vpsdb.json"
-_INI_CFG = IniConfig(str(VPINFE_INI_PATH))
 _vpsdb_cache: Optional[List[Dict]] = None
+
+
+def _fresh_config() -> IniConfig:
+    return IniConfig(str(VPINFE_INI_PATH))
 
 
 def normalize_table_rating(value) -> int:
@@ -36,7 +39,8 @@ def ensure_vpsdb_downloaded() -> bool:
     global _vpsdb_cache
     from common.vpsdb import VPSdb
     try:
-        VPSdb(SettingsConfig.from_config(_INI_CFG).table_root_dir, _INI_CFG)
+        config = _fresh_config()
+        VPSdb(SettingsConfig.from_config(config).table_root_dir, config)
         _vpsdb_cache = None
         return VPSDB_JSON_PATH.exists()
     except Exception as e:
@@ -277,7 +281,8 @@ def associate_vps_to_folder(
         from clioptions import _claimMediaForTable
         from common.table import Table
 
-        tabletype = MediaConfig.from_config(_INI_CFG).table_type
+        config = _fresh_config()
+        tabletype = MediaConfig.from_config(config).table_type
         pseudo = Table()
         pseudo.tableDirName = table_folder.name
         pseudo.fullPathTable = str(table_folder)
@@ -287,7 +292,8 @@ def associate_vps_to_folder(
     if download_media or user_media:
         from common.vpsdb import VPSdb
 
-        vps = VPSdb(SettingsConfig.from_config(_INI_CFG).table_root_dir, _INI_CFG)
+        config = _fresh_config()
+        vps = VPSdb(SettingsConfig.from_config(config).table_root_dir, config)
 
         class _LightTable:
             def __init__(self, folder: Path, vpx: Path):
@@ -323,8 +329,8 @@ def scan_missing_table_rows(reload: bool = False) -> List[Dict]:
 
 
 def build_metadata(*args, **kwargs):
-    return metadata_service.build_metadata(*args, iniconfig=_INI_CFG, **kwargs)
+    return metadata_service.build_metadata(*args, iniconfig=_fresh_config(), **kwargs)
 
 
 def apply_vpx_patches(*args, **kwargs):
-    return metadata_service.apply_vpx_patches(*args, iniconfig=_INI_CFG, **kwargs)
+    return metadata_service.apply_vpx_patches(*args, iniconfig=_fresh_config(), **kwargs)

@@ -461,6 +461,11 @@ def render_panel(tab=None):
                 config.config.get('Settings', 'tablerootdir', fallback=''),
                 config.config.get('Settings', 'vpxinipath', fallback=''),
             )
+            try:
+                from managerui.services import table_index_service
+                table_index_service.invalidate()
+            except Exception:
+                logger.exception("Failed to invalidate table index after saving configuration")
             ui.notify('Configuration Saved', type='positive')
         except Exception as e:
             logger.exception("Failed to save configuration to %s", INI_PATH)
