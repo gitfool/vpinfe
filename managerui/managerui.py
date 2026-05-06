@@ -1,5 +1,20 @@
 from __future__ import annotations
 import logging
+import os
+
+from common.paths import CONFIG_DIR
+
+
+def _configure_nicegui_storage() -> str:
+    nicegui_storage_dir = CONFIG_DIR / ".nicegui"
+    nicegui_storage_dir.mkdir(parents=True, exist_ok=True)
+    storage_path = str(nicegui_storage_dir)
+    os.environ["NICEGUI_STORAGE_PATH"] = storage_path
+    return storage_path
+
+
+_NICEGUI_STORAGE_PATH = _configure_nicegui_storage()
+
 from nicegui import ui, app, context
 from fastapi.responses import JSONResponse
 from .pages import tables as tab_tables
@@ -19,7 +34,6 @@ from .services.archive_service import cleanup_archive, create_vpxz_archive
 from .ui_helpers import load_manager_styles, nav_button
 import asyncio
 import threading
-import os
 import socket
 import time
 from common.app_version import get_version
@@ -27,7 +41,6 @@ from common.app_updater import (
     check_for_updates as check_for_app_updates,
     launch_prepared_update,
     prepare_update,
-    CONFIG_DIR as UPDATER_CONFIG_DIR,
 )
 
 logger = logging.getLogger("vpinfe.manager.ui")
@@ -488,10 +501,7 @@ def _manager_ui_urls(port: int) -> list[str]:
 
 def _run_ui():
     STORAGE_SECRET = "verysecret" # The storage is just to keep the active tab between sessions. Nothing sensitive.
-    nicegui_storage_dir = UPDATER_CONFIG_DIR / ".nicegui"
-    nicegui_storage_dir.mkdir(parents=True, exist_ok=True)
-    os.environ["NICEGUI_STORAGE_PATH"] = str(nicegui_storage_dir)
-    logger.info("Using NiceGUI storage path: %s", nicegui_storage_dir)
+    logger.info("Using NiceGUI storage path: %s", _NICEGUI_STORAGE_PATH)
     logger.info("Starting Manager UI on host=0.0.0.0 port=%s", _ui_port)
     logger.info("Manager UI expected URLs: %s", ", ".join(_manager_ui_urls(_ui_port)))
     ui.run(title='VPinFE Manager UI',
