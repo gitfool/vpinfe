@@ -35,7 +35,7 @@ from common.pinmame_score_parser_updater import ensure_latest_roms_json
 from common.vpinplay_service import sync_on_shutdown as vpinplay_sync_on_shutdown
 from common.app_version import get_version
 from common.themes import ThemeRegistry
-from common.paths import VPINFE_INI_PATH, ensure_config_dir
+from common.paths import VPINFE_INI_PATH, configure_nicegui_storage, ensure_config_dir
 from common.metadata_service import build_metadata
 
 # Get the base path
@@ -43,11 +43,13 @@ base_path = os.path.dirname(os.path.abspath(__file__))
 
 # Load config BEFORE importing clioptions/managerui (they create IniConfig at import time)
 config_dir = ensure_config_dir()
+nicegui_storage_path = configure_nicegui_storage()
 log_path = configure_logging(config_dir, enable_file=False)
 iniconfig = IniConfig(str(VPINFE_INI_PATH))
 log_path = configure_logging(config_dir, iniconfig)
 logger = get_logger("vpinfe.main")
 logger.info("Logging to %s", log_path)
+logger.info("Using NiceGUI storage path: %s", nicegui_storage_path)
 logger.info("Version: %s", get_version())
 
 try:

@@ -1,19 +1,10 @@
 from __future__ import annotations
 import logging
-import os
 
-from common.paths import CONFIG_DIR
-
-
-def _configure_nicegui_storage() -> str:
-    nicegui_storage_dir = CONFIG_DIR / ".nicegui"
-    nicegui_storage_dir.mkdir(parents=True, exist_ok=True)
-    storage_path = str(nicegui_storage_dir)
-    os.environ["NICEGUI_STORAGE_PATH"] = storage_path
-    return storage_path
+from common.paths import configure_nicegui_storage
 
 
-_NICEGUI_STORAGE_PATH = _configure_nicegui_storage()
+_NICEGUI_STORAGE_PATH = configure_nicegui_storage()
 
 from nicegui import ui, app, context
 from fastapi.responses import JSONResponse
@@ -34,6 +25,7 @@ from .services.archive_service import cleanup_archive, create_vpxz_archive
 from .ui_helpers import load_manager_styles, nav_button
 import asyncio
 import threading
+import os
 import socket
 import time
 from common.app_version import get_version
@@ -242,7 +234,7 @@ def header():
 
             ui.timer(0.5, check_updates_async, once=True)
 
-def build_app():
+def build_app(page_param: str = '', dialog_param: str = ''):
     load_manager_styles()
 
     header()
@@ -303,10 +295,7 @@ def build_app():
 
     current_page = {'value': None}
 
-    def show_page(page_key: str, *, persist: bool = True):
-        if persist:
-            app.storage.user['active_page'] = page_key
-
+    def show_page(page_key: str):
         for key, button in nav_buttons.items():
             if key == page_key:
                 button.classes(add='nav-btn-active')
@@ -325,25 +314,17 @@ def build_app():
             if render_page is not None:
                 render_page()
 
-    # Determine initial page: URL ?page= param takes priority, then first-run, then saved page
+    # Determine initial page: URL ?page= param takes priority, then first-run.
     global _first_run
-    page_param = app.storage.user.get('_page_param')
-    if page_param:
-        del app.storage.user['_page_param']
-
     if _first_run:
         initial_page = 'vpinfe'
     elif page_param:
         initial_page = page_param
     else:
-        initial_page = app.storage.user.get('active_page', 'tables')
-    show_page(initial_page, persist=not bool(page_param))
+        initial_page = 'tables'
+    show_page(initial_page)
 
     # Show dialog if requested via URL param, or first-run dialog
-    dialog_param = app.storage.user.get('_dialog_param')
-    if dialog_param:
-        del app.storage.user['_dialog_param']
-
     if _first_run:
         _first_run = False  # Only show once
         _dialog_first_run()
@@ -380,15 +361,17 @@ _DIALOG_HANDLERS = {
 
 @ui.page('/')
 def index(page: str = '', dialog: str = ''):
+    page_param = ''
     if page:
         resolved = PAGE_ALIASES.get(page.lower())
         if resolved:
-            app.storage.user['_page_param'] = resolved
+            page_param = resolved
+    dialog_param = ''
     if dialog:
         key = dialog.lower()
         if key in _DIALOG_HANDLERS:
-            app.storage.user['_dialog_param'] = key
-    build_app()
+            dialog_param = key
+    build_app(page_param=page_param, dialog_param=dialog_param)
 
 @ui.page('/remote')
 def remote_page():

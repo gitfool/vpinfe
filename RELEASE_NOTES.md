@@ -7,6 +7,6 @@ This is the offical release of vpinfe v2.2.1
 None
 
 ### Fixes
-- fix "Read-only file system: '/.nicegui'"
+- fix "Read-only file system: '/.nicegui'" #2
 
 ### Notes

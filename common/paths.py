@@ -21,6 +21,14 @@ def ensure_config_dir() -> Path:
     return CONFIG_DIR
 
 
+def configure_nicegui_storage() -> str:
+    nicegui_storage_dir = ensure_config_dir() / ".nicegui"
+    nicegui_storage_dir.mkdir(parents=True, exist_ok=True)
+    storage_path = str(nicegui_storage_dir)
+    os.environ["NICEGUI_STORAGE_PATH"] = storage_path
+    return storage_path
+
+
 def get_ini_config() -> IniConfig:
     ensure_config_dir()
     return IniConfig(str(VPINFE_INI_PATH))

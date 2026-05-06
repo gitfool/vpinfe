@@ -429,31 +429,42 @@ def render_panel(tab=None):
                 inp.on_value_change(lambda _: update_launch_preview())
 
     def save_config():
-        for section, keys in inputs.items():
-            for key, inp in keys.items():
-                if key == '__thirdparty_included' or key == '__windows_included':
-                    continue
-                if section == 'Logger' and key == 'level':
-                    level_value = str(inp.value or 'info').strip().lower() or 'info'
-                    include_thirdparty = bool(getattr(inputs.get('Logger', {}).get('__thirdparty_included'), 'value', False))
-                    include_windows = bool(getattr(inputs.get('Logger', {}).get('__windows_included'), 'value', False))
-                    flags = []
-                    if include_thirdparty:
-                        flags.append('thirdparty')
-                    if include_windows:
-                        flags.append('windows')
-                    if flags:
-                        level_value = f"{level_value} | {' | '.join(flags)}"
-                    config.config.set(section, key, level_value)
-                    continue
-                if type(inp.value) is bool:
-                    config.config.set(section, key, str(inp.value).lower())
-                else:
-                    value = inp.value
-                    config.config.set(section, key, value)
-        with open(INI_PATH, 'w') as f:
-            config.config.write(f)
-        ui.notify('Configuration Saved', type='positive')
+        try:
+            for section, keys in inputs.items():
+                for key, inp in keys.items():
+                    if key == '__thirdparty_included' or key == '__windows_included':
+                        continue
+                    if section == 'Logger' and key == 'level':
+                        level_value = str(inp.value or 'info').strip().lower() or 'info'
+                        include_thirdparty = bool(getattr(inputs.get('Logger', {}).get('__thirdparty_included'), 'value', False))
+                        include_windows = bool(getattr(inputs.get('Logger', {}).get('__windows_included'), 'value', False))
+                        flags = []
+                        if include_thirdparty:
+                            flags.append('thirdparty')
+                        if include_windows:
+                            flags.append('windows')
+                        if flags:
+                            level_value = f"{level_value} | {' | '.join(flags)}"
+                        config.config.set(section, key, level_value)
+                        continue
+                    if type(inp.value) is bool:
+                        config.config.set(section, key, str(inp.value).lower())
+                    else:
+                        value = '' if inp.value is None else str(inp.value)
+                        config.config.set(section, key, value)
+            with open(INI_PATH, 'w') as f:
+                config.config.write(f)
+            logger.info(
+                "Saved configuration to %s: vpxbinpath=%r tablerootdir=%r vpxinipath=%r",
+                INI_PATH,
+                config.config.get('Settings', 'vpxbinpath', fallback=''),
+                config.config.get('Settings', 'tablerootdir', fallback=''),
+                config.config.get('Settings', 'vpxinipath', fallback=''),
+            )
+            ui.notify('Configuration Saved', type='positive')
+        except Exception as e:
+            logger.exception("Failed to save configuration to %s", INI_PATH)
+            ui.notify(f'Failed to save configuration: {e}', type='negative')
 
     def show_command_output_dialog(title: str, command: list[str], output: str, exit_code: int | None):
         with ui.dialog().props('persistent max-width=1000px') as dlg, ui.card().classes('w-full').style(

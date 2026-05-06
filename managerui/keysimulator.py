@@ -395,11 +395,11 @@ class KeySimulator:
             logger.debug("File exists: %s", config_path.exists())
 
         iniconfig = IniConfig(str(config_path))
-        vpinball_ini_path = iniconfig.config["Settings"]["vpxinipath"]
+        vpinball_ini_path = iniconfig.config["Settings"].get("vpxinipath", "").strip()
 
         if self.debug:
             logger.debug("VPinballX.ini path from config: %s", vpinball_ini_path)
-            logger.debug("VPinballX.ini exists: %s", Path(vpinball_ini_path).exists())
+            logger.debug("VPinballX.ini exists: %s", bool(vpinball_ini_path) and Path(vpinball_ini_path).is_file())
 
         self.raw_mappings = self.parse_vpinball_key_mappings(vpinball_ini_path)
         self.key_mappings = self.convert_to_key_ids(self.raw_mappings)
@@ -463,7 +463,17 @@ class KeySimulator:
         if self.debug:
             logger.debug("Parsing VPinballX.ini: %s", ini_path)
 
-        with open(ini_path, "r", encoding="utf-8-sig") as f:
+        ini_path = (ini_path or "").strip()
+        if not ini_path:
+            logger.warning("Skipping VPinballX.ini key mapping parse: Settings.vpxinipath is not set")
+            return mappings
+
+        ini_file = Path(ini_path).expanduser()
+        if not ini_file.is_file():
+            logger.warning("Skipping VPinballX.ini key mapping parse: file not found at %s", ini_file)
+            return mappings
+
+        with ini_file.open("r", encoding="utf-8-sig") as f:
             for raw_line in f:
                 line = raw_line.strip()
 
