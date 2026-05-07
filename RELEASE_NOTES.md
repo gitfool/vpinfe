@@ -1,12 +1,12 @@
 ## VPinFE Release Notes
 
 ### Summary
-This is the offical release of vpinfe v2.2.4
+This is the offical release of vpinfe v2.2.5
 
 ### What's New
-- add addtional opions to vpx_config.py page
+None
 
 ### Fixes
-- fix stale cache after saving. #4
+None
 
 ### Notes
