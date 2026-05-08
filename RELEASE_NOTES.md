@@ -7,6 +7,6 @@ This is the offical release of vpinfe v2.2.5
 None
 
 ### Fixes
-None
+- fix table .ini user parser for non-existing ini's
 
 ### Notes

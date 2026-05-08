@@ -226,6 +226,35 @@ class TestScoreParser(unittest.TestCase):
         self.assertEqual(resolved, str(text_path))
         self.assertEqual(result, [ParsedEntry(section="", rank=None, initials="", score=10100)])
 
+    def test_decode_ini_file_skips_blank_scores(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            ini_path = Path(temp_dir) / "VPReg.ini"
+            ini_path.write_text(
+                "\n".join(
+                    [
+                        "[Aerosmith]",
+                        "Score1Name = AAA",
+                        "Score1 = ",
+                        "Score2Name = BBB",
+                        "Score2 = 12,345",
+                        "Hiscore = ",
+                        "[Other]",
+                        "Highscore = 100",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            result = score_parser.decode_ini_file(str(ini_path))
+
+        self.assertEqual(
+            result,
+            [
+                ParsedEntry(section="Score", rank=2, initials="BBB", score=12345),
+                ParsedEntry(section="Other", rank=None, initials="", score=100),
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

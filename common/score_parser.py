@@ -1393,8 +1393,10 @@ def decode_mixed_leaderboard(
 
     return results
 
-def parse_ini_score(value: str) -> int:
+def parse_ini_score(value: str) -> int | None:
     normalized = value.strip().replace(",", "")
+    if not normalized:
+        return None
     return int(normalized)
 
 def build_ini_section_name(section_name: str, group_name: str) -> str:
@@ -1438,12 +1440,17 @@ def decode_ini_file(filename: str) -> list[ParsedEntry]:
                 rank_match = re.search(r"(\d+)$", score_key)
                 rank = int(rank_match.group(1)) if rank_match else None
                 group_name = re.sub(r"\d+$", "", score_key)
+                score = parse_ini_score(score_value)
+                if score is None:
+                    paired_keys.update({key, score_key})
+                    continue
+
                 entries.append(
                     ParsedEntry(
                         section=build_ini_section_name(section_name, group_name),
                         rank=rank,
                         initials=clean_text(value),
-                        score=parse_ini_score(score_value),
+                        score=score,
                     )
                 )
                 paired_keys.update({key, score_key})
@@ -1458,24 +1465,33 @@ def decode_ini_file(filename: str) -> list[ParsedEntry]:
                 if name_value is None:
                     continue
 
+                score = parse_ini_score(value)
+                if score is None:
+                    paired_keys.update({key, name_key})
+                    continue
+
                 entries.append(
                     ParsedEntry(
                         section=build_ini_section_name(section_name, group_name),
                         rank=int(rank_text),
                         initials=clean_text(name_value),
-                        score=parse_ini_score(value),
+                        score=score,
                     )
                 )
                 paired_keys.update({key, name_key})
                 continue
 
             if is_standalone_ini_score_key(key):
+                score = parse_ini_score(value)
+                if score is None:
+                    continue
+
                 entries.append(
                     ParsedEntry(
                         section=section_name,
                         rank=None,
                         initials="",
-                        score=parse_ini_score(value),
+                        score=score,
                     )
                 )
 
