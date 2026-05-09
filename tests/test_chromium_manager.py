@@ -45,6 +45,18 @@ class ChromiumManagerTests(unittest.TestCase):
             mock.patch("frontend.chromium_manager.os.path.isfile", side_effect=exists):
             self.assertEqual(chromium_manager.get_chromium_path(), bundled)
 
+    def test_linux_get_chromium_path_finds_google_chrome_stable(self) -> None:
+        chrome = "/usr/bin/google-chrome-stable"
+        bundled = "/opt/vpinfe/chromium/linux/chrome/chrome"
+
+        def which(binary_name: str) -> str | None:
+            return chrome if binary_name == "google-chrome-stable" else None
+
+        with mock.patch("frontend.chromium_manager.platform.system", return_value="Linux"), \
+            mock.patch("frontend.chromium_manager.which", side_effect=which), \
+            mock.patch("frontend.chromium_manager.resource_path", return_value=bundled):
+            self.assertEqual(chromium_manager.get_chromium_path(), chrome)
+
     def test_wait_ignores_exited_launcher_while_window_connected(self) -> None:
         manager = ChromiumManager()
         proc = types.SimpleNamespace(poll=mock.Mock(return_value=0), returncode=0)

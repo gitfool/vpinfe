@@ -1,12 +1,13 @@
 ## VPinFE Release Notes
 
 ### Summary
-This is the offical release of vpinfe v2.2.6
+This is the offical release of vpinfe v2.2.7
 
 ### What's New
-None
+- Updated theme docs for attract mode
+- Add "google-chrome-stable" for cachyos
 
 ### Fixes
-- fix input disable/enable on launch for button bounce
+None
 
 ### Notes

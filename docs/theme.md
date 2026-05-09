@@ -733,6 +733,59 @@ async function receiveEvent(message) {
 
 If the table window launches the table from local input, remember that `vpin.sendMessageToAllWindows(...)` excludes the sender. Call `showTableLoadingOverlay()` directly in the local `joyselect` path before `await vpin.launchTable(...)`, or send the event with `vpin.sendMessageToAllWindowsIncSelf(...)`.
 
+### Attract Mode During Table Launch
+
+If your theme implements attract mode, treat table launch as a hard suspension boundary. Clearing the current timer is not enough, because user-activity listeners, menu events, or `TableRunning` handling can accidentally schedule a new idle timer while VPX is still open.
+
+Use a separate launch/remote-launch suspension flag:
+
+- set `attractSuspended = true` and clear both idle and advance timers on `TableLaunching` and `RemoteLaunching`
+- keep `shouldPauseAttractMode()` returning `true` while `attractSuspended` is set
+- make user-activity handlers clear timers and return without scheduling a new idle timer while suspended
+- clear `attractSuspended` only on `TableLaunchComplete` or `RemoteLaunchComplete`
+- after launch completion, restart the idle countdown instead of immediately starting attract mode
+- in a local `joyselect` launch path, suspend attract mode before calling `vpin.launchTable(...)` so the sender is protected before backend events arrive
+
+Example pattern:
+
+```javascript
+let attractIdleTimer = null;
+let attractAdvanceTimer = null;
+let attractSuspended = false;
+
+function clearAttractTimers() {
+  clearTimeout(attractIdleTimer);
+  clearTimeout(attractAdvanceTimer);
+  attractIdleTimer = null;
+  attractAdvanceTimer = null;
+}
+
+function suspendAttractMode() {
+  attractSuspended = true;
+  clearAttractTimers();
+}
+
+function markUserActivity() {
+  if (attractSuspended) {
+    clearAttractTimers();
+    return;
+  }
+  clearAttractTimers();
+  attractIdleTimer = setTimeout(startAttractMode, ATTRACT_IDLE_MS);
+}
+
+async function receiveEvent(message) {
+  await vpin.handleEvent(message);
+
+  if (message.type === "TableLaunching" || message.type === "RemoteLaunching") {
+    suspendAttractMode();
+  } else if (message.type === "TableLaunchComplete" || message.type === "RemoteLaunchComplete") {
+    attractSuspended = false;
+    markUserActivity();
+  }
+}
+```
+
 ### Input Actions
 
 The following input actions are passed to your `handleInput` function (table window only):

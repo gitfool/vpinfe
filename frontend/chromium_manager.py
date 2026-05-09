@@ -99,7 +99,12 @@ def get_chromium_path():
     elif system == "Linux":
         # Check if chromium is locally available on the system.
         # If so use that instead of bundled chromium.
-        for binary_name in ("chromium", "chromium-browser", "google-chrome"):
+        for binary_name in (
+            "chromium",
+            "chromium-browser",
+            "google-chrome",
+            "google-chrome-stable",
+        ):
             chromium_path = which(binary_name)
             if chromium_path is not None:
                 return chromium_path
