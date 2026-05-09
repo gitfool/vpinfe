@@ -50,6 +50,8 @@ class VPinFECore {
     };
     this.previousButtonStates = {};
     this.gamepadEnabled = true;
+    this.frontendInputEnabled = true;
+    this._launchInputSuppressedByLifecycle = false;
 
     // menu is up?
     this.menuUP = false;
@@ -352,14 +354,16 @@ class VPinFECore {
 
   // launch a table
   async launchTable(index) {
-    this.gamepadEnabled = false;
+    this.#setFrontendInputEnabled(false);
     try {
       await this.call("launch_table", index);
     } catch (e) {
       // The call will timeout after 30s while VPX is still running - that's expected
       this.call("console_out", `launch_table call ended: ${e.message}`);
     } finally {
-      this.gamepadEnabled = true;
+      if (!this._launchInputSuppressedByLifecycle && !this.remoteLaunchActive) {
+        this.#setFrontendInputEnabled(true);
+      }
     }
   }
 
@@ -399,6 +403,7 @@ class VPinFECore {
       this.setAudioMuted(!!message.muted);
       return;
     }
+    this.#handleFrontendInputLifecycleEvent(message);
 
     // Default handling for TableDataChange
     if (message.type === "TableDataChange") {
@@ -779,6 +784,7 @@ class VPinFECore {
           }
         }
       } else if (data.type === 'event') {
+        this.#handleFrontendInputLifecycleEvent(data.message);
         // Handle pushed events from Python
         if (typeof window.receiveEvent === 'function') {
           window.receiveEvent(data.message);
@@ -892,7 +898,26 @@ class VPinFECore {
     }
   }
 
+  #setFrontendInputEnabled(enabled) {
+    this.frontendInputEnabled = !!enabled;
+    this.gamepadEnabled = this.frontendInputEnabled;
+  }
+
+  #handleFrontendInputLifecycleEvent(message) {
+    if (!message || typeof message !== "object") return;
+
+    if (message.type === "TableLaunching" || message.type === "RemoteLaunching") {
+      this._launchInputSuppressedByLifecycle = true;
+      this.#setFrontendInputEnabled(false);
+    } else if (message.type === "TableLaunchComplete" || message.type === "RemoteLaunchComplete") {
+      this._launchInputSuppressedByLifecycle = false;
+      this.#setFrontendInputEnabled(true);
+    }
+  }
+
   async #triggerInputAction(action) {
+    if (!this.frontendInputEnabled) return;
+
     if(this.tutorialUP) {
       this.inputHandlerTutorial.forEach(handler => handler(action));
     }
@@ -948,6 +973,8 @@ class VPinFECore {
 
   // Keybaord input processing to handlers
   async #onKeyDown(e) {
+    if (!this.frontendInputEnabled) return;
+
     if (this._windowName == "table") {
       const action = this.#actionForKeyboardEvent(e);
       if (!action) return;
@@ -1003,6 +1030,8 @@ class VPinFECore {
 }
 
 async #onButtonPressed(buttonIndex, gamepadIndex) {
+  if (!this.frontendInputEnabled) return;
+
   const actions = this.joyButtonMap[buttonIndex.toString()];
   if (!actions) return;
 
@@ -1029,27 +1058,25 @@ async #onButtonPressed(buttonIndex, gamepadIndex) {
 }
 
   #updateGamepads() {
-    if (this.gamepadEnabled) {
-      const gamepads = navigator.getGamepads();
-      for (let i = 0; i < gamepads.length; i++) {
-        const gp = gamepads[i];
-        if (!gp) continue;
+    const gamepads = navigator.getGamepads();
+    for (let i = 0; i < gamepads.length; i++) {
+      const gp = gamepads[i];
+      if (!gp) continue;
 
-        if (!this.previousButtonStates[i]) {
-          this.previousButtonStates[i] = new Array(gp.buttons.length).fill(false);
-        }
-
-        gp.buttons.forEach((button, index) => {
-          const wasPressed = this.previousButtonStates[i][index];
-          const isPressed = button.pressed;
-
-          if (isPressed && !wasPressed) {
-            //this.call("console_out", "Button: " + index);
-            this.#onButtonPressed(index, i); // new press
-          }
-          this.previousButtonStates[i][index] = isPressed;
-        });
+      if (!this.previousButtonStates[i]) {
+        this.previousButtonStates[i] = new Array(gp.buttons.length).fill(false);
       }
+
+      gp.buttons.forEach((button, index) => {
+        const wasPressed = this.previousButtonStates[i][index];
+        const isPressed = button.pressed;
+
+        if (this.frontendInputEnabled && isPressed && !wasPressed) {
+          //this.call("console_out", "Button: " + index);
+          this.#onButtonPressed(index, i); // new press
+        }
+        this.previousButtonStates[i][index] = isPressed;
+      });
     }
     requestAnimationFrame(() => this.#updateGamepads());
   }

@@ -646,11 +646,11 @@ Events are sent between windows via `receiveEvent()`. These are the built-in eve
 | Event Type | Properties | Description |
 |------------|------------|-------------|
 | `TableIndexUpdate` | `index` | User navigated to a different table. Sent by the table window to all others. |
-| `TableLaunching` | — | A table is about to launch. Use this to fade out, stop audio, etc. |
+| `TableLaunching` | — | A table is about to launch. Frontend keyboard/gamepad routing is suspended until `TableLaunchComplete`; use this to fade out, stop audio, etc. |
 | `TableRunning` | — | The launched table has finished loading and is now running. Sent when the table process outputs "Startup done". |
-| `TableLaunchComplete` | — | The launched table has exited. Use this to fade back in, resume audio. |
-| `RemoteLaunching` | `table_name` | The manager UI triggered a remote table launch. Show an overlay. |
-| `RemoteLaunchComplete` | — | The remote-launched table has exited. Hide the overlay. |
+| `TableLaunchComplete` | — | The launched table has exited and frontend input routing is restored. Use this to fade back in, resume audio. |
+| `RemoteLaunching` | `table_name` | The manager UI triggered a remote table launch. Frontend keyboard/gamepad routing is suspended until `RemoteLaunchComplete`; show an overlay. |
+| `RemoteLaunchComplete` | — | The remote-launched table has exited and frontend input routing is restored. Hide the overlay. |
 | `TableDataChange` | `index`, `collection?`, `filters?`, `sort?` | Table data changed (collection switch, filter/sort update). Handled automatically by `vpin.handleEvent()`. |
 
 You can also define custom event types and send them with `vpin.sendMessageToAllWindows()`.
@@ -957,7 +957,7 @@ Sends an event to all windows except the current one. Convenience wrapper around
 Sends an event to all windows including the current one and forwarding to iframes.
 
 #### launchTable(index)
-Disables gamepad input, calls backend to launch the selected table, then re-enables gamepad input. The launch lifecycle is `TableLaunching` before the process starts, `TableRunning` when the table finishes loading, and `TableLaunchComplete` when it exits.
+Suspends frontend keyboard/gamepad routing, calls backend to launch the selected table, then restores input after the launch lifecycle completes. The launch lifecycle is `TableLaunching` before the process starts, `TableRunning` when the table finishes loading, and `TableLaunchComplete` when it exits.
 
 #### getTableData(reset=false)
 Loads table data from the backend into `vpin.tableData`. Pass `reset=true` to reload from the full unfiltered table list.

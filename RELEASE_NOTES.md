@@ -7,6 +7,6 @@ This is the offical release of vpinfe v2.2.6
 None
 
 ### Fixes
-None
+- fix input disable/enable on launch for button bounce
 
 ### Notes
