@@ -1,12 +1,12 @@
 ## VPinFE Release Notes
 
 ### Summary
-This is the offical release of vpinfe v2.2.5
+This is the offical release of vpinfe v2.2.6
 
 ### What's New
 None
 
 ### Fixes
-- fix table .ini user parser for non-existing ini's
+None
 
 ### Notes

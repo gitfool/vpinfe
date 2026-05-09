@@ -138,6 +138,13 @@ Your theme's own `style.css` and `theme.js` can be named whatever you want.
 
 If your theme supports cabinets or portrait-style table layouts, build that into the `table` window deliberately. In practice, the `table` window is usually the only screen that needs rotation-aware layout changes. `bg` and `dmd` often stay unrotated.
 
+There are two different rotation concepts to keep separate:
+
+- **OS monitor orientation**: If the user sets the playfield monitor to Portrait in the operating system, Chromium receives a portrait-shaped window. For example, CSS `100vw` is the narrow edge and `100vh` is the long edge.
+- **VPinFE table rotation**: `[Displays] tablerotation` is exposed to themes as `vpin.tableRotation` and `get_table_rotation`. This tells the theme how to rotate its playfield UI inside that Chromium window.
+
+VPinFE does not automatically rotate arbitrary theme markup. The backend launches Chromium on the configured monitor and `vpinfe-core.js` loads display values during `vpin.ready`; the theme decides how to use those values.
+
 These calls are especially useful:
 
 ```javascript
@@ -145,11 +152,49 @@ const cabMode = await vpin.call("get_cab_mode");
 const rotationDegree = await vpin.call("get_table_rotation");
 ```
 
+After `await vpin.ready`, the same values are also available as:
+
+```javascript
+vpin.tableOrientation; // "landscape" or "portrait"
+vpin.tableRotation;    // degrees, default 0
+```
+
 Good questions to answer up front when starting a new theme:
 
 - Should the theme declare `type: "cab"` or `type: "both"`?
 - Should portrait mode use a different layout, or just rotate the landscape one?
 - Should only the main table UI rotate, or should table-only overlays rotate too?
+
+#### Basic Cab portrait pattern
+
+The Basic Cab theme works on an OS-level Portrait playfield by treating the page as layers:
+
+- `#fadeContainer` contains the table UI and media.
+- `#remote-launch-overlay` is rotated with the table UI so launch feedback appears in the same orientation.
+- `#overlay-root` stays as the injected menu host, but a child wrapper (`#menu-overlay-container`) catches the menu iframes and applies menu-specific rotation.
+
+The key trick is that a 90-degree or 270-degree rotated surface must swap its CSS dimensions before rotation:
+
+```javascript
+const rotation = Number(vpin.tableRotation) || 0;
+const swapAxes = Math.abs(rotation) === 90 || Math.abs(rotation) === 270;
+const rotatedWidth = swapAxes ? "100vh" : "100vw";
+const rotatedHeight = swapAxes ? "100vw" : "100vh";
+
+[document.getElementById("fadeContainer"), document.getElementById("remote-launch-overlay")]
+  .filter(Boolean)
+  .forEach((element) => {
+    element.style.position = "absolute";
+    element.style.top = "50%";
+    element.style.left = "50%";
+    element.style.width = rotatedWidth;
+    element.style.height = rotatedHeight;
+    element.style.transformOrigin = "center center";
+    element.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
+  });
+```
+
+Without the width/height swap, the rotated landscape surface is clipped inside the portrait browser window. With the swap, the theme gets a full-size virtual playfield surface and then rotates it into the monitor.
 
 One easy thing to miss: the built-in menus are injected into `#overlay-root`, not inside your main theme container. If you rotate only your main table wrapper, the menus will still appear unrotated.
 
@@ -159,6 +204,67 @@ In other words:
 - Rotating `#overlay-root` rotates `mainmenu.html` and `collectionmenu.html`
 - If you only do the first one, rotated table themes will have mismatched menus
 
+Basic Cab handles this by keeping `#overlay-root` aligned to the same virtual surface and moving injected children into a stable wrapper:
+
+```html
+<div id="overlay-root">
+  <div id="menu-overlay-container"></div>
+</div>
+```
+
+```javascript
+function ensureMenuOverlayContainer() {
+  const overlayRoot = document.getElementById("overlay-root");
+  if (!overlayRoot) return null;
+
+  let container = document.getElementById("menu-overlay-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "menu-overlay-container";
+    overlayRoot.appendChild(container);
+  }
+
+  Array.from(overlayRoot.children).forEach((child) => {
+    if (child !== container) container.appendChild(child);
+  });
+
+  if (!overlayRoot._menuObserver) {
+    const observer = new MutationObserver(() => {
+      Array.from(overlayRoot.children).forEach((child) => {
+        if (child !== container) container.appendChild(child);
+      });
+    });
+    observer.observe(overlayRoot, { childList: true });
+    overlayRoot._menuObserver = observer;
+  }
+
+  return container;
+}
+```
+
+Then size and center the root surface, and rotate the inner menu wrapper as needed for that theme:
+
+```javascript
+const overlayRoot = document.getElementById("overlay-root");
+if (overlayRoot) {
+  overlayRoot.style.position = "absolute";
+  overlayRoot.style.top = "50%";
+  overlayRoot.style.left = "50%";
+  overlayRoot.style.width = rotatedWidth;
+  overlayRoot.style.height = rotatedHeight;
+  overlayRoot.style.transformOrigin = "center center";
+  overlayRoot.style.transform = "translate(-50%, -50%)";
+}
+
+const menuOverlay = ensureMenuOverlayContainer();
+if (menuOverlay) {
+  menuOverlay.style.transformOrigin = "center center";
+  menuOverlay.style.transform = `rotate(${menuRotation}deg)`;
+}
+```
+
+`menuRotation` is theme-specific. Basic Cab uses a separate menu rotation because its table UI, wheel art, and metadata panel are already designed for cabinet viewing, while the injected menus have their own landscape assumptions. When extending this to another theme, copy the layer structure and dimension swap first, then tune `menuRotation` until the main and collection menus read correctly on the cabinet.
+
 For more advanced themes, it helps to think in layers:
 
 - `#tableViewport`: fullscreen viewport wrapper
@@ -166,6 +272,49 @@ For more advanced themes, it helps to think in layers:
 - `#overlay-root`: injected menu host that may need the same transform as `#tableScreen`
 
 That wrapper approach is much easier to maintain than rotating individual components one by one.
+
+Recommended CSS baseline:
+
+```css
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: black;
+}
+
+#fadeContainer {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  transform-origin: center center;
+}
+
+#overlay-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#menu-overlay-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center center;
+  pointer-events: none;
+}
+
+#menu-overlay-container > iframe,
+#menu-overlay-container > * {
+  pointer-events: auto;
+}
+```
 
 ### index_bg.html & index_dmd.html
 
