@@ -11,6 +11,7 @@ from common.iniconfig import IniConfig
 from common.dof_service import clear_active_dof_event, find_dof_file, send_dof_event_token
 from common.launcher import build_masked_tableini_path, build_vpx_launch_command
 from common.vpxcollections import VPXCollections
+from frontend.chromium_manager import get_builtin_chromium_options
 from pathlib import Path
 from managerui.config_fields import is_checkbox_field, sort_input_mapping_keys
 from managerui import config_support
@@ -67,6 +68,7 @@ FRIENDLY_NAMES = {
     'autoupdatemediaonstartup': 'Auto Update Media On Startup',
     'splashscreen': 'Enable splashscreen',
     'muteaudio': 'Mute Frontend Audio',
+    'chromeoptions': 'Additional Chrome Options',
     'mmhidequitbutton': 'Hide Quit from MainMenu',
     'enabledof': 'Enable DOF',
     'dofconfigtoolapikey': 'DOF Config Tool API Key',
@@ -370,6 +372,11 @@ def render_panel(tab=None):
                     value=value,
                     placeholder='KEY=value KEY2="value with spaces"'
                 ).props('outlined autogrow').classes('config-input config-input-env')
+            elif section == 'Settings' and key == 'chromeoptions':
+                inp = ui.textarea(
+                    value=value,
+                    placeholder='--disable-accelerated-video-decode\n--ozone-platform=x11'
+                ).props('outlined autogrow').classes('config-input config-input-env')
             elif section == 'Settings' and key == 'theme':
                 theme_options = _get_installed_theme_names()
                 if value and value not in theme_options:
@@ -614,9 +621,13 @@ def render_panel(tab=None):
                                     )
                                     if key in options
                                 ]
+                                chrome_option_keys = [
+                                    key for key in ('chromeoptions',)
+                                    if key in options
+                                ]
                                 general_keys = [
                                     key for key in options
-                                    if key not in set(path_keys + launch_keys)
+                                    if key not in set(path_keys + launch_keys + chrome_option_keys)
                                 ]
                                 frontend_toggle_keys = [
                                     key for key in general_keys
@@ -736,6 +747,23 @@ def render_panel(tab=None):
                                                         'font-family: monospace;'
                                                     )
                                                     update_launch_preview()
+                                    if chrome_option_keys:
+                                        with ui.card().classes('config-side-card w-full p-4'):
+                                            ui.label('Additional Chrome Options').classes('text-lg font-semibold').style('color: var(--ink) !important;')
+                                            ui.label(
+                                                'Append extra flags to each Chromium or Chrome frontend window.'
+                                            ).classes('text-sm').style('color: var(--ink-muted) !important;')
+                                            with ui.element('div').classes('config-launch-layout mt-3'):
+                                                with ui.element('div').classes('config-display-column'):
+                                                    value = config.config.get(section, 'chromeoptions', fallback='')
+                                                    build_config_input(section, 'chromeoptions', value)
+                                                with ui.element('div').classes('config-launch-preview-box'):
+                                                    ui.label('VPinFE-managed Chrome options').classes('text-sm font-semibold').style('color: var(--ink-muted) !important;')
+                                                    ui.textarea(
+                                                        value='\n'.join(get_builtin_chromium_options()),
+                                                    ).props('readonly outlined autogrow').classes('w-full').style(
+                                                        'font-family: monospace;'
+                                                    )
                             else:
                                 with ui.card().classes('config-card w-full p-4'):
                                     if section == 'Displays':

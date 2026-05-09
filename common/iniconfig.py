@@ -41,6 +41,7 @@ class IniConfig:
 				'autoupdatemediaonstartup': 'false',
 				'splashscreen': 'false',
 				'muteaudio': 'false',
+				'chromeoptions': '',
 				'MMhideQuitButton': 'false',
 				},
 			'Input': {

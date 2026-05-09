@@ -54,6 +54,7 @@ class SettingsConfig:
     vpx_launch_env: str = ""
     mute_audio: bool = False
     splashscreen: bool = False
+    chrome_options: str = ""
     cab_mode: bool = False
     hide_quit_button: bool = False
 
@@ -74,6 +75,7 @@ class SettingsConfig:
             vpx_launch_env=cfg_get(source, "Settings", "vpxlaunchenv", ""),
             mute_audio=cfg_bool(source, "Settings", "muteaudio", False),
             splashscreen=cfg_bool(source, "Settings", "splashscreen", False),
+            chrome_options=cfg_get(source, "Settings", "chromeoptions", ""),
             cab_mode=cfg_bool(source, "Settings", "cabmode", False),
             hide_quit_button=cfg_bool(source, "Settings", "MMhideQuitButton", False),
         )

@@ -9,6 +9,7 @@ positioned on the correct monitor with fullscreen.
 import os
 import sys
 import logging
+import shlex
 from shutil import which
 from collections import namedtuple
 import platform
@@ -24,6 +25,73 @@ from common.logging_config import include_thirdparty_logs
 
 
 logger = logging.getLogger("vpinfe.frontend.chromium_manager")
+
+
+CHROMIUM_BASE_FLAGS = [
+    "--kiosk",
+    "--start-maximized",
+    "--no-first-run",
+    "--noerrdialogs",
+    "--disable-infobars",
+    "--disable-session-crashed-bubble",
+    "--disable-restore-session-state",
+    "--disable-background-networking",
+    "--disable-component-update",
+    "--disable-default-apps",
+    "--log-level=3",
+    # Prevent throttling/freezing when window is not focused. This is
+    # important for Linux when an external game takes focus and occludes
+    # the frontend window.
+    "--disable-background-timer-throttling",
+    "--disable-backgrounding-occluded-windows",
+    "--disable-renderer-backgrounding",
+    "--disable-background-media-suspend",
+    "--disable-features=CalculateNativeWindowOcclusion,PreloadMediaEngagementData,MediaEngagementBypassAutoplayPolicies",
+    "--disable-hang-monitor",
+    "--disable-ipc-flooding-protection",
+    "--disable-gpu-process-crash-limit",
+    "--ignore-gpu-blocklist",
+    # Fix for Gamepad API losing connection after focus switch on Linux.
+    # Allows re-accessing /dev/input devices and bypasses gesture requirements.
+    "--no-sandbox",
+    "--disable-gpu-sandbox",
+    "--autoplay-policy=no-user-gesture-required",
+    # Suppress "unsupported command-line flag" info bar warnings.
+    "--test-type",
+]
+
+
+def parse_additional_chromium_options(raw_options: str) -> list[str]:
+    """Parse user-provided Chromium flags using shell-style quoting."""
+    raw_options = (raw_options or "").strip()
+    if not raw_options:
+        return []
+    return shlex.split(raw_options, comments=False, posix=True)
+
+
+def get_builtin_chromium_options(
+    window_name: str = "<window>",
+    url: str = "<url>",
+    monitor=None,
+    user_data_dir: str = "<temp profile dir>",
+    mute_audio: bool = False,
+) -> list[str]:
+    """Return VPinFE-managed Chromium flags without the executable path."""
+    x = getattr(monitor, "x", "<x>")
+    y = getattr(monitor, "y", "<y>")
+    width = getattr(monitor, "width", "<width>")
+    height = getattr(monitor, "height", "<height>")
+    options = [
+        f"--app={url}",
+        f"--window-name=vpinfe-{window_name}",
+        f"--window-position={x},{y}",
+        f"--window-size={width},{height}",
+        f"--user-data-dir={user_data_dir}",
+        *CHROMIUM_BASE_FLAGS,
+    ]
+    if mute_audio:
+        options.append("--mute-audio")
+    return options
 
 
 def _build_window_url(
@@ -149,7 +217,15 @@ class ChromiumManager:
         self._processes = []  # [(window_name, process, temp_dir, monitor)]
         self._exit_event = threading.Event()
 
-    def launch_window(self, window_name, url, monitor, index, mute_audio=False):
+    def launch_window(
+        self,
+        window_name,
+        url,
+        monitor,
+        index,
+        mute_audio=False,
+        additional_options: str = "",
+    ):
         """Launch one Chromium instance for a given monitor.
 
         Args:
@@ -173,49 +249,24 @@ class ChromiumManager:
         env["GOOGLE_DEFAULT_CLIENT_ID"] = "no"
         env["GOOGLE_DEFAULT_CLIENT_SECRET"] = "no"
 
-        # macOS: requires "Displays have separate Spaces" enabled in
-        # System Settings > Desktop & Dock > Mission Control so that
-        # --kiosk fullscreen on one monitor doesn't black out others.
         args = [
             chrome_path,
-            f"--app={url}",
-            f"--window-name=vpinfe-{window_name}",
-            "--kiosk",
-            "--start-maximized",
-            f"--window-position={monitor.x},{monitor.y}",
-            f"--window-size={monitor.width},{monitor.height}",
-            f"--user-data-dir={user_data_dir}",
-            "--no-first-run",
-            "--noerrdialogs",
-            "--disable-infobars",
-            "--disable-session-crashed-bubble",
-            "--disable-restore-session-state",
-            "--disable-background-networking",
-            "--disable-component-update",
-            "--disable-default-apps",
-            "--log-level=3",
-            # Prevent throttling/freezing when window is not focused. This is
-            # important for Linux when an external game takes focus and occludes
-            # the frontend window.
-            "--disable-background-timer-throttling",
-            "--disable-backgrounding-occluded-windows",
-            "--disable-renderer-backgrounding",
-            "--disable-background-media-suspend",
-            "--disable-features=CalculateNativeWindowOcclusion,PreloadMediaEngagementData,MediaEngagementBypassAutoplayPolicies",
-            "--disable-hang-monitor",
-            "--disable-ipc-flooding-protection",
-            "--disable-gpu-process-crash-limit",
-            "--ignore-gpu-blocklist",
-            # Fix for Gamepad API losing connection after focus switch on Linux.
-            # Allows re-accessing /dev/input devices and bypasses gesture requirements.
-            "--no-sandbox",
-            "--disable-gpu-sandbox",
-            "--autoplay-policy=no-user-gesture-required",
-            # Suppress "unsupported command-line flag" info bar warnings
-            "--test-type",
+            *get_builtin_chromium_options(
+                window_name=window_name,
+                url=url,
+                monitor=monitor,
+                user_data_dir=user_data_dir,
+                mute_audio=mute_audio,
+            ),
         ]
-        if mute_audio:
-            args.append("--mute-audio")
+        try:
+            extra_args = parse_additional_chromium_options(additional_options)
+        except ValueError as exc:
+            logger.warning("Ignoring invalid Settings.chromeoptions value: %s", exc)
+            extra_args = []
+        if extra_args:
+            logger.info("Adding Chromium options for '%s': %s", window_name, extra_args)
+            args.extend(extra_args)
 
         logger.info(
             "Launching '%s' on monitor %s (%sx%s at %s,%s)",
@@ -324,6 +375,7 @@ class ChromiumManager:
                 monitor,
                 screen_id,
                 mute_audio=(window_name != "table"),
+                additional_options=settings.chrome_options,
             )
 
         logger.info("Launched %s browser windows", len(self._processes))

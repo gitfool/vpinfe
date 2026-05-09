@@ -57,6 +57,42 @@ class ChromiumManagerTests(unittest.TestCase):
             mock.patch("frontend.chromium_manager.resource_path", return_value=bundled):
             self.assertEqual(chromium_manager.get_chromium_path(), chrome)
 
+    def test_parse_additional_chromium_options_supports_multiple_flags(self) -> None:
+        options = chromium_manager.parse_additional_chromium_options(
+            '--disable-accelerated-video-decode\n'
+            '--ozone-platform=x11 --user-agent="VPinFE Test"'
+        )
+
+        self.assertEqual(
+            options,
+            [
+                "--disable-accelerated-video-decode",
+                "--ozone-platform=x11",
+                "--user-agent=VPinFE Test",
+            ],
+        )
+
+    def test_launch_window_appends_additional_chromium_options(self) -> None:
+        manager = ChromiumManager()
+        proc = types.SimpleNamespace()
+        monitor = types.SimpleNamespace(x=10, y=20, width=800, height=600)
+
+        with mock.patch("frontend.chromium_manager.get_chromium_path", return_value="/usr/bin/chromium"), \
+            mock.patch("frontend.chromium_manager.os.path.exists", return_value=True), \
+            mock.patch("frontend.chromium_manager.tempfile.mkdtemp", return_value="/tmp/vpinfe-profile"), \
+            mock.patch("frontend.chromium_manager.subprocess.Popen", return_value=proc) as popen:
+            manager.launch_window(
+                "table",
+                "http://127.0.0.1:8000/app/table",
+                monitor,
+                0,
+                additional_options="--disable-accelerated-video-decode\n--ozone-platform=x11",
+            )
+
+        args = popen.call_args.args[0]
+        self.assertIn("--disable-accelerated-video-decode", args)
+        self.assertIn("--ozone-platform=x11", args)
+
     def test_wait_ignores_exited_launcher_while_window_connected(self) -> None:
         manager = ChromiumManager()
         proc = types.SimpleNamespace(poll=mock.Mock(return_value=0), returncode=0)
