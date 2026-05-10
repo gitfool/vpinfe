@@ -112,7 +112,9 @@ class ChromiumManagerTests(unittest.TestCase):
 
         args = popen.call_args.args[0]
         self.assertIn("--app=http://127.0.0.1:8000/app/table", args)
-        self.assertIn("--window-size=800,600", args)
+        self.assertIn("--user-data-dir=/tmp/vpinfe-profile", args)
+        self.assertNotIn("--window-position=10,20", args)
+        self.assertNotIn("--window-size=800,600", args)
         self.assertNotIn("--kiosk", args)
         self.assertNotIn("--disable-background-networking", args)
 
