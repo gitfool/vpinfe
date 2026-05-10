@@ -93,6 +93,29 @@ class ChromiumManagerTests(unittest.TestCase):
         self.assertIn("--disable-accelerated-video-decode", args)
         self.assertIn("--ozone-platform=x11", args)
 
+    def test_launch_window_can_disable_default_chromium_options(self) -> None:
+        manager = ChromiumManager()
+        proc = types.SimpleNamespace()
+        monitor = types.SimpleNamespace(x=10, y=20, width=800, height=600)
+
+        with mock.patch("frontend.chromium_manager.get_chromium_path", return_value="/usr/bin/chromium"), \
+            mock.patch("frontend.chromium_manager.os.path.exists", return_value=True), \
+            mock.patch("frontend.chromium_manager.tempfile.mkdtemp", return_value="/tmp/vpinfe-profile"), \
+            mock.patch("frontend.chromium_manager.subprocess.Popen", return_value=proc) as popen:
+            manager.launch_window(
+                "table",
+                "http://127.0.0.1:8000/app/table",
+                monitor,
+                0,
+                include_default_options=False,
+            )
+
+        args = popen.call_args.args[0]
+        self.assertIn("--app=http://127.0.0.1:8000/app/table", args)
+        self.assertIn("--window-size=800,600", args)
+        self.assertNotIn("--kiosk", args)
+        self.assertNotIn("--disable-background-networking", args)
+
     def test_wait_ignores_exited_launcher_while_window_connected(self) -> None:
         manager = ChromiumManager()
         proc = types.SimpleNamespace(poll=mock.Mock(return_value=0), returncode=0)

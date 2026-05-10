@@ -149,6 +149,7 @@ class TestCommonArchitecture(unittest.TestCase):
         self.assertEqual(SettingsConfig.from_config(parser).theme, "Revolution")
         self.assertTrue(SettingsConfig.from_config(parser).auto_update_media_on_startup)
         self.assertTrue(SettingsConfig.from_config(parser).vpx_log_delete_on_start)
+        self.assertFalse(SettingsConfig.from_config(parser).disable_default_chrome_options)
         self.assertEqual(MediaConfig.from_config(parser).table_type, "fss")
         self.assertEqual(NetworkConfig.from_config(parser).ws_port, 9002)
         self.assertEqual(NetworkConfig.from_config(parser).theme_assets_port, 8000)
@@ -171,6 +172,12 @@ class TestCommonArchitecture(unittest.TestCase):
         parser = configparser.ConfigParser()
 
         self.assertFalse(SettingsConfig.from_config(parser).splashscreen)
+
+    def test_settings_config_reads_disable_default_chrome_options(self) -> None:
+        parser = configparser.ConfigParser()
+        parser.read_dict({"Settings": {"disabledefaultchromeoptions": "yes"}})
+
+        self.assertTrue(SettingsConfig.from_config(parser).disable_default_chrome_options)
 
     def test_media_paths_apply_and_payload_use_shared_specs(self) -> None:
         table = SimpleNamespace(fullPathTable="/tmp/Table", TableImagePath=None, BGImagePath=None)

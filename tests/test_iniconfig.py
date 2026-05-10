@@ -82,6 +82,15 @@ class TestIniConfig(unittest.TestCase):
             self.assertTrue(config.config.has_section("Settings"))
             self.assertEqual(config.config.get("Settings", "chromeoptions"), "")
 
+    def test_disable_default_chrome_options_defaults_off(self) -> None:
+        with TemporaryDirectory() as tmp:
+            ini_path = Path(tmp) / "vpinfe.ini"
+
+            config = IniConfig(str(ini_path))
+
+            self.assertTrue(config.config.has_section("Settings"))
+            self.assertEqual(config.config.get("Settings", "disabledefaultchromeoptions"), "false")
+
     def test_vpx_log_delete_on_start_defaults_off(self) -> None:
         with TemporaryDirectory() as tmp:
             ini_path = Path(tmp) / "vpinfe.ini"

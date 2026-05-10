@@ -1,10 +1,10 @@
 ## VPinFE Release Notes
 
 ### Summary
-This is the offical release of vpinfe v2.2.8
+This is the offical release of vpinfe v2.2.9
 
 ### What's New
-- Add the ability to add chrome/chroumium options to browser startup. 
+- Added option to disable Default Chrome options
 
 ### Fixes
 None

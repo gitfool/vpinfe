@@ -75,6 +75,7 @@ def get_builtin_chromium_options(
     monitor=None,
     user_data_dir: str = "<temp profile dir>",
     mute_audio: bool = False,
+    include_default_options: bool = True,
 ) -> list[str]:
     """Return VPinFE-managed Chromium flags without the executable path."""
     x = getattr(monitor, "x", "<x>")
@@ -87,8 +88,9 @@ def get_builtin_chromium_options(
         f"--window-position={x},{y}",
         f"--window-size={width},{height}",
         f"--user-data-dir={user_data_dir}",
-        *CHROMIUM_BASE_FLAGS,
     ]
+    if include_default_options:
+        options.extend(CHROMIUM_BASE_FLAGS)
     if mute_audio:
         options.append("--mute-audio")
     return options
@@ -225,6 +227,7 @@ class ChromiumManager:
         index,
         mute_audio=False,
         additional_options: str = "",
+        include_default_options: bool = True,
     ):
         """Launch one Chromium instance for a given monitor.
 
@@ -257,6 +260,7 @@ class ChromiumManager:
                 monitor=monitor,
                 user_data_dir=user_data_dir,
                 mute_audio=mute_audio,
+                include_default_options=include_default_options,
             ),
         ]
         try:
@@ -376,6 +380,7 @@ class ChromiumManager:
                 screen_id,
                 mute_audio=(window_name != "table"),
                 additional_options=settings.chrome_options,
+                include_default_options=not settings.disable_default_chrome_options,
             )
 
         logger.info("Launched %s browser windows", len(self._processes))

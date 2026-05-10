@@ -19,6 +19,7 @@ CHECKBOX_FIELDS = {
     ("Settings", "splashscreen"),
     ("Settings", "muteaudio"),
     ("Settings", "mmhidequitbutton"),
+    ("Settings", "disabledefaultchromeoptions"),
     ("Settings", "globaltableinioverrideenabled"),
     ("Settings", "vpxlogdeleteonstart"),
     ("Displays", "cabmode"),

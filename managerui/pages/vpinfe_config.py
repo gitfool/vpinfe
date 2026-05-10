@@ -69,6 +69,7 @@ FRIENDLY_NAMES = {
     'splashscreen': 'Enable splashscreen',
     'muteaudio': 'Mute Frontend Audio',
     'chromeoptions': 'Additional Chrome Options',
+    'disabledefaultchromeoptions': 'Disable Default Chrome Options',
     'mmhidequitbutton': 'Hide Quit from MainMenu',
     'enabledof': 'Enable DOF',
     'dofconfigtoolapikey': 'DOF Config Tool API Key',
@@ -266,6 +267,7 @@ def render_panel(tab=None):
     dof_test_event_input = None
     launch_command_preview = None
     launch_env_preview = None
+    chrome_options_preview = None
 
     # Get all sections, filter out ignored ones
     sections = [s for s in config.config.sections() if s not in IGNORED_SECTIONS]
@@ -331,6 +333,21 @@ def render_panel(tab=None):
         command_text, env_text = _build_launch_preview_text()
         launch_command_preview.value = command_text
         launch_env_preview.value = env_text
+
+    def update_chrome_options_preview():
+        if chrome_options_preview is None:
+            return
+        settings_inputs = inputs.get('Settings', {})
+        disable_defaults = _as_bool(
+            getattr(
+                settings_inputs.get('disabledefaultchromeoptions'),
+                'value',
+                config.config.get('Settings', 'disabledefaultchromeoptions', fallback='false'),
+            )
+        )
+        chrome_options_preview.value = '\n'.join(
+            get_builtin_chromium_options(include_default_options=not disable_defaults)
+        )
 
     def build_config_input(section: str, key: str, value: str):
         friendly_label = get_friendly_name(key)
@@ -434,6 +451,8 @@ def render_panel(tab=None):
             inputs[section][key] = inp
             if (section, key) in launch_preview_keys:
                 inp.on_value_change(lambda _: update_launch_preview())
+            if section == 'Settings' and key == 'disabledefaultchromeoptions':
+                inp.on_value_change(lambda _: update_chrome_options_preview())
 
     def save_config():
         try:
@@ -622,7 +641,7 @@ def render_panel(tab=None):
                                     if key in options
                                 ]
                                 chrome_option_keys = [
-                                    key for key in ('chromeoptions',)
+                                    key for key in ('disabledefaultchromeoptions', 'chromeoptions')
                                     if key in options
                                 ]
                                 general_keys = [
@@ -755,15 +774,23 @@ def render_panel(tab=None):
                                             ).classes('text-sm').style('color: var(--ink-muted) !important;')
                                             with ui.element('div').classes('config-launch-layout mt-3'):
                                                 with ui.element('div').classes('config-display-column'):
+                                                    if 'disabledefaultchromeoptions' in chrome_option_keys:
+                                                        value = config.config.get(
+                                                            section,
+                                                            'disabledefaultchromeoptions',
+                                                            fallback='false',
+                                                        )
+                                                        build_config_input(section, 'disabledefaultchromeoptions', value)
                                                     value = config.config.get(section, 'chromeoptions', fallback='')
                                                     build_config_input(section, 'chromeoptions', value)
                                                 with ui.element('div').classes('config-launch-preview-box'):
                                                     ui.label('VPinFE-managed Chrome options').classes('text-sm font-semibold').style('color: var(--ink-muted) !important;')
-                                                    ui.textarea(
-                                                        value='\n'.join(get_builtin_chromium_options()),
+                                                    chrome_options_preview = ui.textarea(
+                                                        value='',
                                                     ).props('readonly outlined autogrow').classes('w-full').style(
                                                         'font-family: monospace;'
                                                     )
+                                                    update_chrome_options_preview()
                             else:
                                 with ui.card().classes('config-card w-full p-4'):
                                     if section == 'Displays':

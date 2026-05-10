@@ -42,6 +42,7 @@ class IniConfig:
 				'splashscreen': 'false',
 				'muteaudio': 'false',
 				'chromeoptions': '',
+				'disabledefaultchromeoptions': 'false',
 				'MMhideQuitButton': 'false',
 				},
 			'Input': {
