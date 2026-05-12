@@ -84,17 +84,13 @@ def get_builtin_chromium_options(
     height = getattr(monitor, "height", "<height>")
     options = [
         f"--app={url}",
+        f"--window-name=vpinfe-{window_name}",
+        f"--window-position={x},{y}",
+        f"--window-size={width},{height}",
         f"--user-data-dir={user_data_dir}",
     ]
     if include_default_options:
-        options.extend(
-            [
-                f"--window-name=vpinfe-{window_name}",
-                f"--window-position={x},{y}",
-                f"--window-size={width},{height}",
-                *CHROMIUM_BASE_FLAGS,
-            ]
-        )
+        options.extend(CHROMIUM_BASE_FLAGS)
     if mute_audio:
         options.append("--mute-audio")
     return options
